@@ -1,41 +1,64 @@
 package com.example.android.hackernewsdemo;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.CursorLoader;
+import androidx.loader.content.Loader;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.database.Cursor;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity {
+import com.example.android.hackernewsdemo.data.HackerNewsProviderContract;
 
-    Story[] stories = {
-            new Story(
-                    "The Secret Math Society Known as Nicolas Bourbaki",
-                    "quantamagazine.org",
-                    "pseudolus",
-                    127,
-                    37
-            ),
-            new Story(
-                    "Could a Peasant Defeat a Knight in Battle?",
-                    "medievalists.net",
-                    "ynac",
-                    179,
-                    153
-            ),
-            new Story(
-                    "AppleCrate II: A New Apple II-Based Parallel Computer (2015)",
-                    "michaeljmahon.com",
-                    "aresant",
-                    63,
-                    7
-            ),
-    };;
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+
+    private static final int LOADER_ID_STORIES = 1;
+
+    StoryAdapter storiesViewAdapter;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        RecyclerView storiesView = findViewById(R.id.rv_stories);
+
+        storiesViewAdapter = new StoryAdapter();
+
+        storiesView.setLayoutManager(new LinearLayoutManager(this));
+        storiesView.setAdapter(storiesViewAdapter);
+
+        getSupportLoaderManager().initLoader(LOADER_ID_STORIES, null, this);
+    }
+
+    @NonNull
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, @Nullable Bundle args) {
+        switch (id) {
+            case LOADER_ID_STORIES:
+                return new CursorLoader(this, HackerNewsProviderContract.Stories.index(), null, null, null, null);
+            default:
+                throw new RuntimeException();
+        }
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor cursor) {
+        storiesViewAdapter.swapCursor(cursor);
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<Cursor> loader) {
+
+    }
 
     static class Story {
         public final String headline;
@@ -43,6 +66,16 @@ public class MainActivity extends AppCompatActivity {
         public final String user;
         public final int votes;
         public final int numComments;
+
+        public static Story fromCursor(Cursor c) {
+            String headline = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_HEADLINE));
+            String domain = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_DOMAIN));
+            String user = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_USER));
+            int votes = c.getInt(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_VOTES));
+            int numComments = c.getInt(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_COMMENTS_COUNT));
+
+            return new Story(headline, domain, user, votes, numComments);
+        }
 
         public Story(String headline, String domain, String user, int votes, int numComments) {
             this.headline = headline;
@@ -53,37 +86,31 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        RecyclerView recyclerView = findViewById(R.id.rv_stories);
-
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
-        recyclerView.setLayoutManager(layoutManager);
-
-        recyclerView.setAdapter(new StoryAdapter());
-    }
-
-    class StoryViewHolder extends RecyclerView.ViewHolder {
+    static class StoryViewHolder extends RecyclerView.ViewHolder {
 
         View itemView;
+
+        TextView mOrder;
+        TextView mHeadline;
+        TextView mDomain;
+        TextView mUser;
+        TextView mVotes;
+        TextView mComments;
 
         public StoryViewHolder(@NonNull View itemView) {
             super(itemView);
 
             this.itemView = itemView;
+
+            mOrder = itemView.findViewById(R.id.tv_number);
+            mHeadline = itemView.findViewById(R.id.tv_headline);
+            mDomain = itemView.findViewById(R.id.tv_domain);
+            mUser = itemView.findViewById(R.id.tv_user);
+            mVotes = itemView.findViewById(R.id.tv_votes);
+            mComments = itemView.findViewById(R.id.tv_comments);
         }
 
         public void setStory(int order, Story story) {
-            TextView mOrder = itemView.findViewById(R.id.tv_number);
-            TextView mHeadline = itemView.findViewById(R.id.tv_headline);
-            TextView mDomain = itemView.findViewById(R.id.tv_domain);
-            TextView mUser = itemView.findViewById(R.id.tv_user);
-            TextView mVotes = itemView.findViewById(R.id.tv_votes);
-            TextView mComments = itemView.findViewById(R.id.tv_comments);
-
             mOrder.setText(String.valueOf(order + 1) + ".");
             mHeadline.setText(story.headline);
             mDomain.setText("(" + story.domain + ")");
@@ -93,7 +120,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    class StoryAdapter extends RecyclerView.Adapter<StoryViewHolder> {
+    static class StoryAdapter extends RecyclerView.Adapter<StoryViewHolder> {
+
+        private Cursor storiesCursor;
 
         @NonNull
         @Override
@@ -107,12 +136,24 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull StoryViewHolder holder, int position) {
-            holder.setStory(position, stories[position]);
+            if (storiesCursor == null) {return;}
+
+            storiesCursor.moveToPosition(position);
+
+            holder.setStory(position, Story.fromCursor(storiesCursor));
+        }
+
+        public void swapCursor(Cursor cursor) {
+            storiesCursor = cursor;
+
+            notifyDataSetChanged();
         }
 
         @Override
         public int getItemCount() {
-            return stories.length;
+            if (storiesCursor == null) {return 0;}
+
+            return storiesCursor.getCount();
         }
     }
 
