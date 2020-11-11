@@ -2,6 +2,7 @@ package com.example.android.hackernewsdemo.data;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.UriMatcher;
 import android.database.AbstractCursor;
 import android.database.Cursor;
@@ -10,51 +11,25 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.example.android.hackernewsdemo.data.HackerNewsRepository.Story;
+
+import dagger.hilt.EntryPoint;
+import dagger.hilt.InstallIn;
+import dagger.hilt.android.EntryPointAccessors;
+import dagger.hilt.android.components.ApplicationComponent;
+
 public class HackerNewsProvider extends ContentProvider {
 
-    Story[] stories = {
-            new Story(
-                    1,
-                    "The Secret Math Society Known as Nicolas Bourbaki",
-                    "quantamagazine.org",
-                    "pseudolus",
-                    127,
-                    37
-            ),
-            new Story(
-                    2,
-                    "Could a Peasant Defeat a Knight in Battle?",
-                    "medievalists.net",
-                    "ynac",
-                    179,
-                    153
-            ),
-            new Story(
-                    3,
-                    "AppleCrate II: A New Apple II-Based Parallel Computer (2015)",
-                    "michaeljmahon.com",
-                    "aresant",
-                    63,
-                    7
-            ),
-    };
+    @EntryPoint
+    @InstallIn(ApplicationComponent.class)
+    public interface HackerNewsRepositoryProviderEntryPoint {
+        HackerNewsRepository getRepository();
+    }
 
-    static class Story {
-        public final int order;
-        public final String headline;
-        public final String domain;
-        public final String user;
-        public final int votes;
-        public final int numComments;
+    private HackerNewsRepositoryProviderEntryPoint getEntryPoint() {
+        Context context = getContext().getApplicationContext();
 
-        public Story(int order, String headline, String domain, String user, int votes, int numComments) {
-            this.order = order;
-            this.headline = headline;
-            this.domain = domain;
-            this.votes = votes;
-            this.user = user;
-            this.numComments = numComments;
-        }
+        return EntryPointAccessors.fromApplication(context, HackerNewsRepositoryProviderEntryPoint.class);
     }
 
     private static final int CODE_STORIES_INDEX = 101;
@@ -77,16 +52,18 @@ public class HackerNewsProvider extends ContentProvider {
     @Nullable
     @Override
     public Cursor query(@NonNull Uri uri, @Nullable String[] projection, @Nullable String selection, @Nullable String[] selectionArgs, @Nullable String sortOrder) {
+        HackerNewsRepository repository = getEntryPoint().getRepository();
+
         switch (uriMatcher.match(uri)) {
             case CODE_STORIES_INDEX:
-                return storiesIndexCursor();
+                return storiesIndexCursor(repository.getStories());
             default:
                 throw new RuntimeException();
         }
     }
 
     @NonNull
-    private Cursor storiesIndexCursor() {
+    private Cursor storiesIndexCursor(Story[] stories) {
         return new AbstractCursor() {
 
             @Override
@@ -113,11 +90,11 @@ public class HackerNewsProvider extends ContentProvider {
 
                 switch (column) {
                     case columnPositionHeadline:
-                        return stories[getPosition()].headline;
+                        return stories[getPosition()].headline();
                     case columnPositionDomain:
-                        return stories[getPosition()].domain;
+                        return stories[getPosition()].domain();
                     case columnPositionUser:
-                        return stories[getPosition()].user;
+                        return stories[getPosition()].user();
                     default:
                         throw new RuntimeException();
                 }
@@ -135,9 +112,9 @@ public class HackerNewsProvider extends ContentProvider {
 
                 switch (column) {
                     case columnPositionVotes:
-                        return stories[getPosition()].votes;
+                        return stories[getPosition()].votes();
                     case columnPositionCommentsCount:
-                        return stories[getPosition()].numComments;
+                        return stories[getPosition()].numComments();
                     default:
                         throw new RuntimeException();
                 }
