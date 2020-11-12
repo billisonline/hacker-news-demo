@@ -8,7 +8,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.example.android.hackernewsdemo.data.HackerNewsProviderContract.Stories;
 import com.example.android.hackernewsdemo.data.HackerNewsRepository;
-import com.example.android.hackernewsdemo.modules.HackerNewsModule;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -28,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(AndroidJUnit4.class)
 @HiltAndroidTest
-@UninstallModules(HackerNewsModule.class)
+@UninstallModules(Application.HackerNewsModule.class)
 public class HackerNewsContentProviderTest {
 
     @Rule
