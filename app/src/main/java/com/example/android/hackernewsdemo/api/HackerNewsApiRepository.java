@@ -1,5 +1,7 @@
 package com.example.android.hackernewsdemo.api;
 
+import android.util.Log;
+
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.RequestFuture;
@@ -9,15 +11,23 @@ import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import javax.inject.Inject;
 
 public class HackerNewsApiRepository implements HackerNewsRepository  {
+    public static final String BASE_URL = "https://hacker-news.firebaseio.com/v0/";
+    public static final String TOP_STORIES_URL = BASE_URL + "topstories.json";
+
     private final RequestQueue requestQueue;
+    private final Gson gson;
 
     @Inject
     public HackerNewsApiRepository(RequestQueue requestQueue) {
         this.requestQueue = requestQueue;
+        this.gson = new Gson();
     }
 
     static class ApiStoriesResponse {
@@ -29,15 +39,19 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
     static class ApiStory {
         public ApiStory() {}
 
-        public String headline;
+        public int id;
 
-        public String domain;
+        public String title;
 
-        public String user;
+        public String text;
 
-        public int votes;
+        public String url = "https://news.ycombinator.com"; //todo
 
-        public int numComments;
+        public String by;
+
+        public int score = 123;
+
+        public int descendants;
     }
 
     static class StoryImpl implements Story {
@@ -48,7 +62,7 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
         private final int numComments;
 
         static StoryImpl fromApiStory(ApiStory apiStory) {
-            return new StoryImpl(apiStory.headline, apiStory.domain, apiStory.user, apiStory.votes, apiStory.numComments);
+            return new StoryImpl(apiStory.title, apiStory.url, apiStory.by, apiStory.score, apiStory.descendants);
         }
 
         private StoryImpl(String headline, String domain, String user, int votes, int numComments) {
@@ -86,52 +100,74 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
         }
     }
 
-    private ApiStory[] getStoriesFromApi() {
+    private int[] getStoryIdsFromApi() {
         RequestFuture<String> future = RequestFuture.newFuture();
 
-        StringRequest request = new StringRequest(Request.Method.GET, "https://httpbin.org/get", future, future);
+        StringRequest request = new StringRequest(Request.Method.GET, TOP_STORIES_URL, future, future);
 
-        /*requestQueue.add(request);
+        requestQueue.add(request);
 
         try {
             String response = future.get(60, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (TimeoutException e) {
-            e.printStackTrace();
-        }*/
 
-        String response = "{\n" +
-                "  \"data\": [\n" +
-                "    {\n" +
-                "      \"headline\": \"The Secret Math Society Known as Nicolas Bourbaki\",\n" +
-                "      \"domain\": \"quantamagazine.org\",\n" +
-                "      \"user\": \"pseudolus\",\n" +
-                "      \"votes\": 127,\n" +
-                "      \"numComments\": 37\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"headline\": \"Could a Peasant Defeat a Knight in Battle?\",\n" +
-                "      \"domain\": \"medievalists.net\",\n" +
-                "      \"user\": \"ynac\",\n" +
-                "      \"votes\": 179,\n" +
-                "      \"numComments\": 153\n" +
-                "    },\n" +
-                "    {\n" +
-                "      \"headline\": \"AppleCrate II: A New Apple II-Based Parallel Computer (2015)\",\n" +
-                "      \"domain\": \"michaeljmahon.com\",\n" +
-                "      \"user\": \"aresant\",\n" +
-                "      \"votes\": 63,\n" +
-                "      \"numComments\": 7\n" +
-                "    }\n" +
-                "  ]\n" +
-                "}";
+            return gson.fromJson(response, int[].class);
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            e.printStackTrace();
 
-        ApiStoriesResponse jsonResponse = (new Gson()).fromJson(response, ApiStoriesResponse.class);
+            return new int[] {}; //todo
+        }
+    }
 
-        return jsonResponse.data;
+    private String storyUrl(int id) {
+        return BASE_URL + "item/" + id + ".json";
+    }
+
+    private ApiStory getStoryFromApi(int id) {
+        RequestFuture<String> future = RequestFuture.newFuture();
+
+        StringRequest request = new StringRequest(
+                Request.Method.GET,
+                storyUrl(id),
+                future,
+                future);
+
+        requestQueue.add(request);
+
+        try {
+            String response = future.get(60, TimeUnit.SECONDS);
+
+            Log.w("HackerNewsApiRepository", response);
+
+            return gson.fromJson(response, ApiStory.class);
+
+        } catch (InterruptedException | TimeoutException | ExecutionException e) {
+            e.printStackTrace();
+
+            return null; //todo
+        }
+    }
+
+    private ApiStory[] getStoriesFromApi() {
+        final int storiesCount = 10;
+
+        int[] ids = getStoryIdsFromApi();
+        List<ApiStory> stories = new ArrayList<>();
+
+        // todo make requests concurrent
+        for (int i=0; i<storiesCount; i++) {
+            if (ids.length > i) {
+                ApiStory story = getStoryFromApi(ids[i]);
+                if (story != null) {
+                    stories.add(story);
+                }
+            }
+        }
+
+        ApiStory[] storiesArray = new ApiStory[stories.size()];
+
+        stories.toArray(storiesArray);
+
+        return storiesArray;
     }
 
     @Override
