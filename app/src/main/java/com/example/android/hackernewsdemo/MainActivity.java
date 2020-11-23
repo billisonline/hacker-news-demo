@@ -9,7 +9,10 @@ import androidx.loader.content.Loader;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -89,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     static class StoryViewHolder extends RecyclerView.ViewHolder {
 
         View itemView;
+        Context context;
 
         TextView mOrder;
         TextView mHeadline;
@@ -101,6 +105,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             super(itemView);
 
             this.itemView = itemView;
+            this.context = itemView.getContext();
 
             mOrder = itemView.findViewById(R.id.tv_number);
             mHeadline = itemView.findViewById(R.id.tv_headline);
@@ -117,6 +122,19 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             mUser.setText(story.user);
             mVotes.setText(story.votes + " points");
             mComments.setText(story.numComments + " comments");
+
+            mHeadline.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Uri uri = Uri.parse(story.domain);
+
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+
+                    if (intent.resolveActivity(context.getPackageManager()) != null) {
+                        context.startActivity(intent);
+                    }
+                }
+            });
         }
     }
 
