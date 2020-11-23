@@ -47,8 +47,8 @@ public class HackerNewsContentProviderTest {
                         }
 
                         @Override
-                        public String domain() {
-                            return "testdomain.com";
+                        public String url() {
+                            return "https://testdomain.com";
                         }
 
                         @Override
@@ -87,7 +87,7 @@ public class HackerNewsContentProviderTest {
 
         assertEquals(1, c.getCount());
 
-        assertEquals("testdomain.com", c.getString(c.getColumnIndex(Stories.COLUMN_DOMAIN)));
+        assertEquals("https://testdomain.com", c.getString(c.getColumnIndex(Stories.COLUMN_URL)));
         assertEquals("testuser", c.getString(c.getColumnIndex(Stories.COLUMN_USER)));
         assertEquals("Test Headline", c.getString(c.getColumnIndex(Stories.COLUMN_HEADLINE)));
         assertEquals(123, c.getInt(c.getColumnIndex(Stories.COLUMN_VOTES)));

@@ -3,7 +3,7 @@ package com.example.android.hackernewsdemo.data;
 public interface HackerNewsRepository {
     interface Story {
         String headline();
-        String domain();
+        String url();
         String user();
         int votes();
         int numComments();

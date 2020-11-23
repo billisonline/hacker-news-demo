@@ -65,24 +65,24 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
     static class Story {
         public final String headline;
-        public final String domain;
+        public final String url;
         public final String user;
         public final int votes;
         public final int numComments;
 
         public static Story fromCursor(Cursor c) {
             String headline = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_HEADLINE));
-            String domain = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_DOMAIN));
+            String url = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_URL));
             String user = c.getString(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_USER));
             int votes = c.getInt(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_VOTES));
             int numComments = c.getInt(c.getColumnIndex(HackerNewsProviderContract.Stories.COLUMN_COMMENTS_COUNT));
 
-            return new Story(headline, domain, user, votes, numComments);
+            return new Story(headline, url, user, votes, numComments);
         }
 
-        public Story(String headline, String domain, String user, int votes, int numComments) {
+        public Story(String headline, String url, String user, int votes, int numComments) {
             this.headline = headline;
-            this.domain = domain;
+            this.url = url;
             this.votes = votes;
             this.user = user;
             this.numComments = numComments;
@@ -115,10 +115,15 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             mComments = itemView.findViewById(R.id.tv_comments);
         }
 
+        private String getDomainFromUrl(String url)
+        {
+            return Uri.parse(url).getAuthority().replace("www.", "");
+        }
+
         public void setStory(int order, Story story) {
             mOrder.setText(String.valueOf(order + 1) + ".");
             mHeadline.setText(story.headline);
-            mDomain.setText("(" + story.domain + ")");
+            mDomain.setText("(" + getDomainFromUrl(story.url) + ")");
             mUser.setText(story.user);
             mVotes.setText(story.votes + " points");
             mComments.setText(story.numComments + " comments");
@@ -126,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
             mHeadline.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Uri uri = Uri.parse(story.domain);
+                    Uri uri = Uri.parse(story.url);
 
                     Intent intent = new Intent(Intent.ACTION_VIEW, uri);
 

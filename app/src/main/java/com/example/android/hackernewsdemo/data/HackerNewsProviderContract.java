@@ -16,7 +16,7 @@ public class HackerNewsProviderContract {
         }
 
         public static final String COLUMN_HEADLINE = "headline";
-        public static final String COLUMN_DOMAIN = "domain";
+        public static final String COLUMN_URL = "url";
         public static final String COLUMN_USER = "user";
         public static final String COLUMN_VOTES = "votes";
         public static final String COLUMN_COMMENTS_COUNT = "comments_count";

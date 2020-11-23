@@ -75,7 +75,7 @@ public class HackerNewsProvider extends ContentProvider {
             public String[] getColumnNames() {
                 return new String[] {
                     HackerNewsProviderContract.Stories.COLUMN_HEADLINE,
-                    HackerNewsProviderContract.Stories.COLUMN_DOMAIN,
+                    HackerNewsProviderContract.Stories.COLUMN_URL,
                     HackerNewsProviderContract.Stories.COLUMN_USER,
                     HackerNewsProviderContract.Stories.COLUMN_VOTES,
                     HackerNewsProviderContract.Stories.COLUMN_COMMENTS_COUNT,
@@ -85,14 +85,14 @@ public class HackerNewsProvider extends ContentProvider {
             @Override
             public String getString(int column) {
                 final int columnPositionHeadline = 0;
-                final int columnPositionDomain = 1;
+                final int columnPositionUrl = 1;
                 final int columnPositionUser = 2;
 
                 switch (column) {
                     case columnPositionHeadline:
                         return stories[getPosition()].headline();
-                    case columnPositionDomain:
-                        return stories[getPosition()].domain();
+                    case columnPositionUrl:
+                        return stories[getPosition()].url();
                     case columnPositionUser:
                         return stories[getPosition()].user();
                     default:

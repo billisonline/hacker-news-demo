@@ -56,7 +56,7 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
 
     static class StoryImpl implements Story {
         private final String headline;
-        private final String domain;
+        private final String url;
         private final String user;
         private final int votes;
         private final int numComments;
@@ -65,9 +65,9 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
             return new StoryImpl(apiStory.title, apiStory.url, apiStory.by, apiStory.score, apiStory.descendants);
         }
 
-        private StoryImpl(String headline, String domain, String user, int votes, int numComments) {
+        private StoryImpl(String headline, String url, String user, int votes, int numComments) {
             this.headline = headline;
-            this.domain = domain;
+            this.url = url;
             this.user = user;
             this.votes = votes;
             this.numComments = numComments;
@@ -80,8 +80,8 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
         }
 
         @Override
-        public String domain() {
-            return domain;
+        public String url() {
+            return url;
         }
 
         @Override
