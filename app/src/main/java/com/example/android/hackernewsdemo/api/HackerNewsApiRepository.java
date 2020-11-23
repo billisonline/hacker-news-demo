@@ -1,17 +1,18 @@
 package com.example.android.hackernewsdemo.api;
 
-import android.util.Log;
-
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.Response;
 import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.StringRequest;
 import com.example.android.hackernewsdemo.data.HackerNewsRepository;
+import com.example.android.hackernewsdemo.utiil.RequestBatchFuture;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -122,68 +123,72 @@ public class HackerNewsApiRepository implements HackerNewsRepository  {
         return BASE_URL + "item/" + id + ".json";
     }
 
-    private ApiStory getStoryFromApi(int id) {
-        RequestFuture<String> future = RequestFuture.newFuture();
-
-        StringRequest request = new StringRequest(
+    private Request<String> getStoryRequest(Response.Listener<String> listener, Response.ErrorListener errorListener, int id) {
+        return new StringRequest(
                 Request.Method.GET,
                 storyUrl(id),
-                future,
-                future);
+                listener,
+                errorListener);
+    }
 
-        requestQueue.add(request);
+    private List<Request<String>> getStoryRequests(Response.Listener<String> listener,
+                                                 Response.ErrorListener errorListener, int[] ids,
+                                                 int maxStories) {
 
-        try {
-            String response = future.get(60, TimeUnit.SECONDS);
+        List<Request<String>> storyRequests = new ArrayList<>();
 
-            Log.w("HackerNewsApiRepository", response);
+        for (int i=0; i<maxStories; i++) {
+            Request<String> storyRequest = getStoryRequest(listener, errorListener, ids[i]);
 
-            return gson.fromJson(response, ApiStory.class);
-
-        } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            e.printStackTrace();
-
-            return null; //todo
+            storyRequests.add(storyRequest);
         }
+
+        return storyRequests;
     }
 
     private ApiStory[] getStoriesFromApi() {
-        final int storiesCount = 10;
+        final int maxStories = 10;
 
-        int[] ids = getStoryIdsFromApi();
-        List<ApiStory> stories = new ArrayList<>();
+        int[] storyIds = getStoryIdsFromApi();
 
-        // todo make requests concurrent
-        for (int i=0; i<storiesCount; i++) {
-            if (ids.length > i) {
-                ApiStory story = getStoryFromApi(ids[i]);
-                if (story != null) {
-                    stories.add(story);
-                }
-            }
+        RequestBatchFuture<String> storiesFuture = RequestBatchFuture.newFuture();
+
+        List<Request<String>> storyRequests = getStoryRequests(storiesFuture, storiesFuture,
+                storyIds, maxStories);
+
+        for (Request<String> storyRequest : storyRequests) {
+            requestQueue.add(storyRequest);
         }
 
-        ApiStory[] storiesArray = new ApiStory[stories.size()];
+        storiesFuture.setRequests(storyRequests);
 
-        stories.toArray(storiesArray);
+        try {
+            List<String> storyResponses = storiesFuture.get(60, TimeUnit.SECONDS);
 
-        return storiesArray;
+            ApiStory[] apiStories = new ApiStory[storyResponses.size()];
+
+            for (int i=0; i<storyResponses.size(); i++) {
+                apiStories[i] = gson.fromJson(storyResponses.get(i), ApiStory.class);
+            }
+
+            return apiStories;
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            e.printStackTrace();
+
+            return new ApiStory[] {};
+        }
     }
 
     @Override
     public Story[] getStories() {
-        List<Story> stories = new ArrayList<>();
-
         ApiStory[] apiStories = getStoriesFromApi();
 
-        for (ApiStory apiStory: apiStories) {
-            stories.add(StoryImpl.fromApiStory(apiStory));
+        Story[] stories = new Story[apiStories.length];
+
+        for (int i=0; i<apiStories.length; i++) {
+            stories[i] = StoryImpl.fromApiStory(apiStories[i]);
         }
 
-        Story[] storiesArray = new Story[stories.size()];
-
-        stories.toArray(storiesArray);
-
-        return storiesArray;
+        return stories;
     }
 }
